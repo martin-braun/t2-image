@@ -1,35 +1,63 @@
-# Custom Vib Image
+# Vanilla OS MacBook T2 (2016-2019) Image
 
-This template repository is a starting point for creating custom [Vib images](https://github.com/Vanilla-OS/Vib) on top of [official vanilla images](https://images.vanillaos.org) like [desktop image](https://github.com/Vanilla-OS/desktop-image). It contains a basic recipe and an example module to get you started.
+Containerfile for building a Vanilla OS Desktop T2 image.
 
-It is suggested to check the [Vib repository's README](https://github.com/Vanilla-OS/Vib?tab=readme-ov-file#recipe-format) to know more about the recipe format, structure of modules and the supported fields.
+This image is based on top of [`vanillaos/desktop`](https://github.com/Vanilla-OS/desktop-image/pkgs/container/desktop) and offers the necessary [kernel patches, drivers and tweaks](https://wiki.t2linux.org/distributions/debian/installation/#adding-t2-support) for any MacBook with a T2 chip.
 
-## Getting Started
+## Development
 
-- First, click on the "Use this template" button in the top right corner, then from the drop-down menu select "Create a new repository". This would create a new repository with the same files and directories as this repository.
-- Go to Settings → Actions → General and ensure "Allow all actions and reusable workflows" are enabled.
-- Now, clone the repository to your local machine and let's start customizing your image. You can also use the GitHub online editor if you prefer.
-- Open the `vib-build.yml` workflow file and replace the custom image name with an image name of your choosing in line 11.
-- Open the `recipe.yml` file and replace the image name and ID with your image name and ID in lines 2 and 3.
-- Now, perform your additions and modifications to the recipe as per your requirements.
-- If you just want to install .deb files, you can just put them in `includes.container/deb-pkgs`
-- Optionally, add your modules to the `modules` directory and add them to the package-modules `includes` in `recipe.yml`.
-- You can check the Actions tab in GitHub to see the build progress of your image.
+### Preparation
+
+- Install `go` via `brew install go`
+- Install `vib` (`git clone git@github.com:Vanilla-OS/Vib.git`, or `vs add git@github.com:Vanilla-OS/Vib.git -b=v0.3.3` with `https://gist.github.com/martin-braun/e10b7cafdd55feea44bc2d06d5c2c972#file-vs` and `alias vib='"$(vs dir github.com/Vanilla-OS/Vib -b=v0.3.3)/vib"'`)
+- Build `vib` by `cd Vib` or `vs sh github.com/Vanilla-OS/Vib/v0.3.3` and then `go build && chmod +x vib`
+- Install `podman` via `brew install podman`
+- Run `podman machine init` to initialize the host VM for `podman`
+
+### Build
+
+This build step is not necessary to use the image, but it is useful to verify the image can be built. Comment the `fsguard` section in `recipe.yml` and then:
+
+```bash
+podman machine start; vib build recipe.yml && podman image build -t vanilla-os/t2 . && podman save -o vanilla-os-t2-desktop.tar localhost/vanilla-os/t2
+```
+
+Don't forget to uncomment the `fsguard` section in `recipe.yml` again.
+
+> Note: You can track the image via `podman inspect localhost/vanilla-os/t2`.
+> You can also clean up via `podman rmi localhost/vanilla-os/t2 && podman rmi 0179950f34c7`
+
+## Usage
+
+### Preparation
+
+This image cannot contain any proprietary driver software for your MacBook, so a few manual steps are required:
+
+- Make sure your Bluetooth and WiFi firmware is available on your EFI partition: https://wiki.t2linux.org/guides/wifi-bluetooth/#on-macos
+
+### Install
+
+- Use balenaEtcher to setup an USB drive with the VanillaOS tar image
+- Boot into recovery, disable SIP and mount your USB drive
+- Install and boot into VanillaOS
+- Connect to the internet using Ethernet/USB tethering/external Wi-Fi adapter
+- Run `host-shell pkexec vim /etc/abroot/abroot.json` in your local installation:
+- Change the "name" entry from something like `vanilla-os/desktop` to `martin-braun/t2-image`.
+<!-- - Remove the differ URL line. -->
+- Run `abroot upgrade` to switch to this image.
+- Perform upgrade via `pkexec abroot upgrade`
+- Finalize your setup by installing your Bluetooth and WiFi firmware under VanillaOS: https://wiki.t2linux.org/guides/wifi-bluetooth/#on-linux
+
+## Development hints
+
+- If we want to install .deb files, we can just put them in `includes.container/deb-pkgs`
+- Optionally, we can add out modules to the `modules` directory and add them to the package-modules `includes` in `recipe.yml`.
+- We can check the Actions tab in GitHub to see the build progress of our image.
 
 > [!NOTE]
 > It is suggested to add a `vib-image` tag to your repository for your image to be easily discoverable.
 
-## Use your custom image
-
-If your image is successfully built, you can then point ABRoot to your custom image to use it.
-
-- Edit `/etc/abroot/abroot.json` with `host-shell pkexec nano /etc/abroot/abroot.json`.
-- Change the "name" entry from something like `vanilla-os/desktop` to `your-github-name/your-image-name` (for example `taukakao/custom`).
-- Run `abroot upgrade` to switch to your custom image.
-
-## Explore
-
-Now, that you are aware of the basics, let's explore the files and directories present in this repository:
+## Project structure
 
 - `.github/workflows/vib-build.yml`: This file contains the GitHub Actions workflow to check for updates to the base image and build the Vib image.
   - It uses the `vib` action to build the recipe and upload it as an artifact. The generated artifact is then built using Docker and pushed to GHCR.

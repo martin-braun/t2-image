@@ -1,8 +1,9 @@
 base: ghcr.io/vanilla-os/desktop:main
-name: Custom Vanilla Desktop
-id: vanilla-custom
+name: Vanilla Desktop T2
+id: vanilla-t2
+
 labels:
-  maintainer: self-maintained
+  maintainer: Martin Braun
 args:
   DEBIAN_FRONTEND: noninteractive
 
@@ -13,25 +14,33 @@ modules:
   - lpkg --unlock
   - apt-get update
 
-# Put your custom actions behind this comment
+- name: add-t2-repo
+  type: includes
+  includes:
+    - modules/10-add-t2-repo
 
-- name: example-packages
+- name: install-t2-kernel
   type: apt
   source:
     packages:
-    - vim
+    - t2-kernel-script-debian
 
-- name: example-commands
+- name: upgrade-t2-kernel
   type: shell
   commands:
-  - echo Example output
+    - update_t2_kernel
 
-- name: example-modules
-  type: includes
-  includes:
-    - modules/50-install-debs
+- name: install-t2-audio
+  type: apt
+  source:
+    packages:
+    - apple-t2-audio-config
 
-# Put your custom actions before this comment
+- name: install-t2-touchbar
+  type: apt
+  source:
+    packages:
+    - tiny-dfr
 
 - name: set-image-name-abroot
   type: includes

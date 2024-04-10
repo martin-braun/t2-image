@@ -1,0 +1,97 @@
+name: Vanilla Desktop T2
+id: vanilla-t2
+
+stages:
+  - id: init
+    base: ghcr.io/vanilla-os/desktop:main
+    singlelayer: false
+    labels:
+      maintainer: Vanilla OS Contributors
+    args:
+      DEBIAN_FRONTEND: noninteractive
+
+    modules:
+    - name: init-setup
+      type: shell
+      commands:
+      - lpkg --unlock
+      - apt-get update
+
+  - id: t2
+    base: ghcr.io/vanilla-os/desktop:main
+    singlelayer: false
+    labels:
+      maintainer: Martin Braun
+    args:
+      DEBIAN_FRONTEND: noninteractive
+
+    modules:
+    - name: add-t2-repo
+      type: includes
+      includes:
+        - modules/10-add-t2-repo.yml
+
+    - name: install-t2-kernel
+      type: apt
+      source:
+        packages:
+        - t2-kernel-script-debian
+
+    - name: upgrade-t2-kernel
+      type: shell
+      commands:
+        - update_t2_kernel
+
+    - name: install-t2-audio
+      type: apt
+      source:
+        packages:
+        - apple-t2-audio-config
+
+    - name: install-t2-touchbar
+      type: apt
+      source:
+        packages:
+        - tiny-dfr
+
+  - id: cleanup
+    base: ghcr.io/vanilla-os/desktop:main
+    singlelayer: false
+    labels:
+      maintainer: Vanilla OS Contributors
+    args:
+      DEBIAN_FRONTEND: noninteractive
+
+    modules:
+    - name: set-image-name-abroot
+      type: includes
+      includes:
+        - modules/80-set-image-abroot-config.yml
+
+    - name: cleanup
+      type: shell
+      commands:
+      - apt-get autoremove -y
+      - apt-get clean
+      - lpkg --lock
+
+    - name: fsguard
+      type: fsguard
+      CustomFsGuard: false
+      FsGuardLocation: "/usr/sbin/FsGuard"
+      GenerateKey: true
+      FilelistPaths: ["/usr/bin"]
+      modules:
+        - name: remove-prev-fsguard
+          type: shell
+          commands:
+            - rm -rf /FsGuard 
+            - rm -f ./minisign.pub ./minisign.key 
+            - chmod +x /usr/sbin/init
+
+    - name: cleanup2
+      type: shell
+      commands:
+        - rm -rf /tmp/*
+        - rm -rf /var/tmp/*
+        - rm -rf /sources
